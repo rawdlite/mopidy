@@ -78,11 +78,13 @@ class FilesLibraryProvider(backend.LibraryProvider):
                     result.append(models.Ref.directory(name=name, uri=uri))
                 elif stat.S_ISREG(st.st_mode) and self._check_audiofile(child):
                     # if self._is_playlist(child):
-                    #     result.append(models.Ref.playlist(name=name, uri='m3u:%s' % child))
+                    #     result.append(models.Ref.playlist(name=name,
+                    #                                       uri='m3u:%s' % child))
                     # else:
                     result.append(models.Ref.track(name=name, uri=uri))
                 else:
-                    logger.warn(u'Ignored file: %s' % child.decode(encoding, 'replace'))
+                    logger.warn(u'Ignored file: %s' % child.decode(encoding,
+                                                                   'replace'))
                     pass
 
         result.sort(key=operator.attrgetter('name'))
