@@ -17,3 +17,8 @@ class PlaylistsProvider(backend.PlaylistsProvider):
 
     def lookup(self, uri):
         logger.debug(u'lookup called for uri %s' % uri)
+
+    def as_list(self):
+        logger.debug(u'as_list called')
+        return []
+        
