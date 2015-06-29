@@ -4,6 +4,7 @@ import logging
 import operator
 import os
 import stat
+import sys
 import urllib2
 
 
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class FilesLibraryProvider(backend.LibraryProvider):
+    """Library for browsing local files."""
 
     @property
     def root_directory(self):
@@ -52,7 +54,7 @@ class FilesLibraryProvider(backend.LibraryProvider):
         self._scanner = scan.Scanner(
             timeout=config['files']['metadata_timeout'])
 
-    def browse(self, uri):
+    def browse(self, uri, encoding=sys.getfilesystemencoding()):
         # TODO: use path.check_file_path_is_inside_base_dir?
         logger.debug(u'browse called with uri %s' % uri)
         # import pdb; pdb.set_trace()
@@ -75,12 +77,12 @@ class FilesLibraryProvider(backend.LibraryProvider):
                 elif stat.S_ISDIR(st.st_mode):
                     result.append(models.Ref.directory(name=name, uri=uri))
                 elif stat.S_ISREG(st.st_mode) and self._check_audiofile(child):
-                    if self._is_playlist(child):
-                        result.append(models.Ref.playlist(name=name, uri=uri))
-                    else:
-                        result.append(models.Ref.track(name=name, uri=uri))
+                    # if self._is_playlist(child):
+                    #     result.append(models.Ref.playlist(name=name, uri='m3u:%s' % child))
+                    # else:
+                    result.append(models.Ref.track(name=name, uri=uri))
                 else:
-                    logger.warn(u'Ignored file: %s' % child)
+                    logger.warn(u'Ignored file: %s' % child.decode(encoding, 'replace'))
                     pass
 
         result.sort(key=operator.attrgetter('name'))

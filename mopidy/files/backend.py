@@ -5,7 +5,7 @@ import logging
 import pykka
 
 from mopidy import backend
-from mopidy.files import library, playlists
+from mopidy.files import library
 
 
 logger = logging.getLogger(__name__)
@@ -19,4 +19,4 @@ class FilesBackend(pykka.ThreadingActor, backend.Backend):
         self.library = library.FilesLibraryProvider(backend=self,
                                                     config=config)
         self.playback = backend.PlaybackProvider(audio=audio, backend=self)
-        self.playlists = playlists.PlaylistsProvider(backend=self)
+        self.playlists = None
