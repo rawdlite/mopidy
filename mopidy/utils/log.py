@@ -164,7 +164,7 @@ class ColorizingStreamHandler(logging.StreamHandler):
     def emit(self, record):
         try:
             message = self.format(record)
-            self.stream.write(message)
+            self.stream.write(message.encode('ascii', 'ignore'))
             self.stream.write(getattr(self, 'terminator', '\n'))
             self.flush()
         except Exception:
