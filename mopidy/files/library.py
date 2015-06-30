@@ -36,7 +36,8 @@ class FilesLibraryProvider(backend.LibraryProvider):
         for entry in config['files']['media_dir']:
             media_dir = {}
             media_dict = entry.split(':')
-            local_path = media_dict[0].replace('~', os.path.expanduser('~'))
+            local_path = path.expand_path(
+                media_dict[0].encode(sys.getfilesystemencoding()))
             st = os.stat(local_path)
             if not stat.S_ISDIR(st.st_mode):
                 logger.warn(u'%s is not a directory' % local_path)
@@ -45,7 +46,7 @@ class FilesLibraryProvider(backend.LibraryProvider):
             if len(media_dict) == 2:
                 media_dir['name'] = media_dict[1]
             else:
-                media_dir['name'] = media_dict[0].replace('/', '+')
+                media_dir['name'] = media_dict[0].replace(os.sep, '+')
             self._media_dirs.append(media_dir)
         logger.debug(self._media_dirs)
         self._follow_symlinks = config['files']['follow_symlinks']
@@ -55,7 +56,6 @@ class FilesLibraryProvider(backend.LibraryProvider):
             timeout=config['files']['metadata_timeout'])
 
     def browse(self, uri, encoding=sys.getfilesystemencoding()):
-        # TODO: use path.check_file_path_is_inside_base_dir?
         logger.debug(u'browse called with uri %s' % uri)
         # import pdb; pdb.set_trace()
         result = []
@@ -63,6 +63,9 @@ class FilesLibraryProvider(backend.LibraryProvider):
         if localpath == 'root':
             result = self._show_media_dirs()
         else:
+            if not self._is_in_basedir(localpath):
+                logger.warn(u'Not in basedir: %s' % localpath)
+                return []
             for name in os.listdir(localpath):
                 child = os.path.join(localpath, name)
                 uri = path.path_to_uri(child)
@@ -71,15 +74,15 @@ class FilesLibraryProvider(backend.LibraryProvider):
                     st = os.stat(child)
                 else:
                     st = os.lstat(child)
-
                 if not self._show_hidden and name.startswith(b'.'):
                     continue
                 elif stat.S_ISDIR(st.st_mode):
                     result.append(models.Ref.directory(name=name, uri=uri))
                 elif stat.S_ISREG(st.st_mode) and self._check_audiofile(child):
                     # if self._is_playlist(child):
-                    #     result.append(models.Ref.playlist(name=name,
-                    #                                       uri='m3u:%s' % child))
+                    #     result.append(models.Ref.playlist(
+                    #         name=name,
+                    #         uri='m3u:%s' % child))
                     # else:
                     result.append(models.Ref.track(name=name, uri=uri))
                 else:
@@ -91,8 +94,11 @@ class FilesLibraryProvider(backend.LibraryProvider):
         return result
 
     def lookup(self, uri):
-        # TODO: use path.check_file_path_is_inside_base_dir?
         logger.debug(u'looking up uri = %s' % uri)
+        localpath = path.uri_to_path(uri)
+        if not self._is_in_basedir(localpath):
+            logger.warn(u'Not in basedir: %s' % localpath)
+            return []
         # import pdb; pdb.set_trace()
         try:
             result = self._scanner.scan(uri)
@@ -103,7 +109,6 @@ class FilesLibraryProvider(backend.LibraryProvider):
             track = models.Track(uri=uri)
             pass
         if not track.name:
-            localpath = path.uri_to_path(track.uri)
             filename = os.path.basename(localpath)
             name = urllib2.unquote(filename).decode('ascii', 'ignore')
             track = track.copy(name=name)
@@ -125,3 +130,17 @@ class FilesLibraryProvider(backend.LibraryProvider):
 
     def _is_playlist(self, child):
         return os.path.splitext(child)[1] == '.m3u'
+
+    def _is_in_basedir(self, localpath):
+        res = False
+        basedirs = [mdir['path'] for mdir in self._media_dirs]
+        for basedir in basedirs:
+            if basedir == localpath:
+                res = True
+            else:
+                try:
+                    path.check_file_path_is_inside_base_dir(localpath, basedir)
+                    res = True
+                except:
+                    pass
+        return res
